@@ -1,0 +1,73 @@
+use cmd_line
+
+mysql> CREATE DATABASE IF NOT EXISTS export_import_demo;
+Query OK, 1 row affected (0.01 sec)
+mysql> USE export_import_demo;
+Database changed
+mysql> CREATE TABLE employees (
+-> emp_id INT PRIMARY KEY,
+-> name VARCHAR(100),
+-> department VARCHAR(100),
+-> salary DECIMAL(10,2)
+-> );
+Query OK, 0 rows affected (0.02 sec)
+mysql> INSERT INTO employees VALUES
+-> (1, 'Alice', 'HR', 45000.00),
+-> (2, 'Bob', 'Finance', 55000.00),
+-> (3, 'Charlie', 'IT', 60000.00);
+Query OK, 3 rows affected (0.02 sec)
+Records: 3 Duplicates: 0 Warnings: 0
+mysql> SELECT *
+-> INTO OUTFILE 'C:/ProgramData/MySQL/MySQL Server
+8.0/Uploads/employees.csv'
+-> FIELDS TERMINATED BY ','
+-> ENCLOSED BY '"'
+
+-> LINES TERMINATED BY '\n'
+-> FROM employees;
+Query OK, 3 rows affected (0.00 sec)
+mysql> SELECT *
+-> INTO OUTFILE 'C:/ProgramData/MySQL/MySQL Server
+8.0/Uploads/employees.csv'
+-> FIELDS TERMINATED BY ','
+-> ENCLOSED BY '"'
+-> LINES TERMINATED BY '\n'
+-> ^C
+mysql> SHOW VARIABLES LIKE 'secure_file_priv';
++------------------+------------------------------------------------+
+| Variable_name | Value |
++------------------+------------------------------------------------+
+| secure_file_priv | C:\ProgramData\MySQL\MySQL Server 8.0\Uploads\ |
++------------------+------------------------------------------------+
+1 row in set (0.00 sec)
+mysql> SELECT *
+-> INTO OUTFILE 'C:/ProgramData/MySQL/MySQL Server
+8.0/Uploads/employees.txt'
+-> FIELDS TERMINATED BY '\t'
+-> LINES TERMINATED BY '\n'
+-> FROM employees;
+Query OK, 3 rows affected (0.00 sec)
+mysql> CREATE TABLE employees_import (
+-> emp_id INT,
+-> name VARCHAR(100),
+-> department VARCHAR(100),
+-> salary DECIMAL(10,2)
+-> );
+Query OK, 0 rows affected (0.02 sec)
+mysql> LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server
+8.0/Uploads/employees.csv'
+-> INTO TABLE employees_import
+-> FIELDS TERMINATED BY ','
+-> ENCLOSED BY '"'
+
+-> LINES TERMINATED BY '\n'
+-> IGNORE 1 LINES; -- if CSV has a header
+Query OK, 2 rows affected (0.02 sec)
+Records: 2 Deleted: 0 Skipped: 0 Warnings: 0
+mysql> LOAD DATA INFILE 'C:/ProgramData/MySQL/MySQL Server
+8.0/Uploads/employees.txt'
+-> INTO TABLE employees_import
+-> FIELDS TERMINATED BY '\t'
+-> LINES TERMINATED BY '\n';
+Query OK, 3 rows affected (0.01 sec)
+Records: 3 Deleted: 0 Skipped: 0 Warnings: 0

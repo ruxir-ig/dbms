@@ -1,0 +1,31 @@
+use mongodb
+
+// ==================== CREATE ====================
+db.students.insertOne({id: 1, name: "John", age: 20, grade: "A"});
+// Insert one
+db.students.insertMany([{id: 2, name: "Jane", age: 22}, {id: 3, name:
+"Mike", age: 21}]); // Insert many
+// ==================== READ ====================
+db.students.find(); // Find all
+db.students.find({grade: "A"}); // Find with filter
+db.students.findOne({id: 1}); // Find one document
+db.students.find({age: {$gte: 20}}); // Age >= 20
+db.students.find().sort({age: -1}).limit(5); // Sort descending,
+limit 5
+// ==================== UPDATE ====================
+db.students.updateOne({id: 1}, {$set: {age: 21}}); //
+Update one field
+db.students.updateMany({grade: "B"}, {$set: {grade: "B+"}}); //
+Update multiple
+db.students.updateOne({id: 2}, {$inc: {age: 1}}); //
+Increment age by 1
+db.students.updateOne({id: 1}, {$push: {courses: "Math"}}); // Add
+to array
+// ==================== DELETE ====================
+db.students.deleteOne({id: 1}); // Delete one
+db.students.deleteMany({grade: "C"}); // Delete many
+// ==================== AGGREGATE ====================
+db.students.aggregate([
+{$group: {_id: "$grade", count: {$sum: 1}, avgAge: {$avg:
+"$age"}}} // Group by grade
+]);
