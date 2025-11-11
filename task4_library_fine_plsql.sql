@@ -1,133 +1,82 @@
-CREATE DATABASE empp;
-USE empp;
+CREATE DATABASE IF NOT EXISTS ruchir;
+USE ruchir;
+
+DROP TABLE IF EXISTS Fine;
+DROP TABLE IF EXISTS Borrower;
+
+SET SQL_SAFE_UPDATES = 0;
 
 CREATE TABLE Borrower (
-Roll_no INT NOT NULL,
-Name VARCHAR(100) NOT NULL,
-Date_of_Issue DATE NOT NULL,
-
-Name_of_Book VARCHAR(150) NOT NULL,
-Status ENUM('I','R') NOT NULL DEFAULT 'I',
-PRIMARY KEY (Roll_no, Name_of_Book),
-CHECK (Status IN ('I','R'))
-) ENGINE=InnoDB;
+    Roll_no INT,
+    Name VARCHAR(50),
+    Date_of_Issue DATE,
+    Name_of_Book VARCHAR(100),
+    Status CHAR(1),
+    PRIMARY KEY(Roll_no, Name_of_Book)
+);
 
 CREATE TABLE Fine (
-Fine_id BIGINT PRIMARY KEY AUTO_INCREMENT,
-Roll_no INT NOT NULL,
-Date DATE NOT NULL,
-Amt DECIMAL(10,2) NOT NULL,
-CONSTRAINT fk_fine_roll FOREIGN KEY (Roll_no) REFERENCES
-Borrower(Roll_no)
-ON UPDATE CASCADE ON DELETE RESTRICT
-) ENGINE=InnoDB;
+    Roll_no INT,
+    Date DATE,
+    Amt DECIMAL(10, 2)
+);
 
-INSERT INTO Borrower (Roll_no, Name, Date_of_Issue, Name_of_Book,
-Status) VALUES
+INSERT INTO Borrower (Roll_no, Name, Date_of_Issue, Name_of_Book, Status)
+VALUES
+    (1, 'Riya', '2025-10-10', 'DBMS', 'I'),
+    (2, 'Aarav', '2025-10-15', 'CN', 'I'),
+    (3, 'Meera', '2025-10-20', 'AI', 'I'),
+    (4, 'Karan', '2025-10-25', 'WT', 'I'),
+    (5, 'Tanya', '2025-11-01', 'HCI', 'I');
 
-(101, 'Asha', DATE_SUB(CURDATE(), INTERVAL 10 DAY), 'DBMS
-Fundamentals', 'I'),
+SELECT * FROM Borrower;
 
-(102, 'Rahul', DATE_SUB(CURDATE(), INTERVAL 22 DAY), 'Operating
-Systems', 'I'),
-
-(103, 'Meera', DATE_SUB(CURDATE(), INTERVAL 45 DAY), 'Data Mining',
-'I'),
-
-(104, 'Vijay', DATE_SUB(CURDATE(), INTERVAL 20 DAY), 'Computer
-Networks', 'R');
+DROP PROCEDURE IF EXISTS return_book;
 DELIMITER $$
-CREATE PROCEDURE Return_Book (
-IN p_roll_no INT,
-IN p_book_name VARCHAR(150)
-)
+
+CREATE PROCEDURE return_book(IN rno INT, IN book VARCHAR(100))
 BEGIN
+    DECLARE issue_date DATE;
+    DECLARE days_diff INT;
+    DECLARE fine_amt DECIMAL(10, 2);
 
-DECLARE v_date_issue DATE;
-DECLARE v_days INT DEFAULT 0;
-DECLARE v_fine DECIMAL(10,2) DEFAULT 0.00;
+    -- Get issue date for given roll and book
+    SELECT Date_of_Issue INTO issue_date
+    FROM Borrower
+    WHERE Roll_no = rno AND Name_of_Book = book AND Status = 'I';
 
-DECLARE v_sqlstate CHAR(5);
-DECLARE v_message TEXT;
+    -- If record not found
+    IF issue_date IS NULL THEN
+        SELECT 'Invalid Roll Number or Book Name!' AS Message;
+    ELSE
+        -- Calculate number of days
+        SET days_diff = DATEDIFF(CURDATE(), issue_date);
 
-DECLARE no_issue_row CONDITION FOR SQLSTATE '45001';
-DECLARE bad_days CONDITION FOR SQLSTATE '45002';
+        -- Fine calculation
+        IF days_diff BETWEEN 15 AND 30 THEN
+            SET fine_amt = days_diff * 5;
+        ELSEIF days_diff > 30 THEN
+            SET fine_amt = days_diff * 50;
+        ELSE
+            SET fine_amt = 0;
+        END IF;
 
-DECLARE EXIT HANDLER FOR SQLEXCEPTION
-BEGIN
-ROLLBACK;
+        -- Update status
+        UPDATE Borrower
+        SET Status = 'R'
+        WHERE Roll_no = rno AND Name_of_Book = book;
 
-GET DIAGNOSTICS CONDITION 1 v_sqlstate = RETURNED_SQLSTATE, v_message
-=
-MESSAGE_TEXT;
-SELECT CONCAT('ERROR [', IFNULL(v_sqlstate,'?????'), ']: ',
-IFNULL(v_message,'Unexpected failure')) AS Error;
-END;
-START TRANSACTION;
+        -- Insert fine if applicable
+        IF fine_amt > 0 THEN
+            INSERT INTO Fine VALUES (rno, CURDATE(), fine_amt);
+        END IF;
 
-SELECT Date_of_Issue
-INTO v_date_issue
-FROM Borrower
-WHERE Roll_no = p_roll_no
-AND Name_of_Book = p_book_name
-AND Status = 'I'
-FOR UPDATE;
-
-IF v_date_issue IS NULL THEN
-SIGNAL no_issue_row
-SET MESSAGE_TEXT = 'No active issue found (either wrong book/roll_no
-or already
-returned).';
-END IF;
-
-SET v_days = DATEDIFF(CURDATE(), v_date_issue);
-
-IF v_days < 0 THEN
-SIGNAL bad_days SET MESSAGE_TEXT = 'Issue date is in the future.
-Please correct the
-record.';
-END IF;
-
-IF v_days BETWEEN 15 AND 30 THEN
-SET v_fine = v_days * 5;
-ELSEIF v_days > 30 THEN
-SET v_fine = v_days * 50;
-ELSE
-SET v_fine = 0;
-END IF;
-
-UPDATE Borrower
-SET Status = 'R'
-WHERE Roll_no = p_roll_no
-AND Name_of_Book = p_book_name
-AND Status = 'I';
-
-IF v_fine > 0 THEN
-INSERT INTO Fine (Roll_no, Date, Amt)
-VALUES (p_roll_no, CURDATE(), v_fine);
-END IF;
-COMMIT;
-
-SELECT
-p_roll_no AS Roll_No,
-p_book_name AS Book,
-v_date_issue AS Date_of_Issue,
-CURDATE() AS Return_Date,
-v_days AS Total_Days,
-v_fine AS Fine_Amount;
-END $$
+        -- Display message
+        SELECT CONCAT('Book returned successfully. Days kept: ', days_diff, ', Fine: Rs ', fine_amt) AS Message;
+    END IF;
+END$$
 DELIMITER ;
 
-CALL Return_Book(101, 'DBMS Fundamentals');
-
-CALL Return_Book(102, 'Operating Systems');
-
-CALL Return_Book(103, 'Data Mining');
-
-CALL Return_Book(104, 'Computer Networks');
-
-CALL Return_Book(999, 'Anything');
-
-SELECT * FROM Borrower ORDER BY Roll_no;
-
-SELECT * FROM Fine ORDER BY Fine_id
+-- use madhura_db;
+-- SET SQL_SAFE_UPDATES = 0;
+-- CALL return_book(1, 'DBMS');
